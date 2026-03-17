@@ -73,7 +73,7 @@
                         android:id="@+id/tvStatus"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Tap "Check Now" to see current status"
+                        android:text="@string/check_now_hint"
                         android:textAppearance="?attr/textAppearanceBodySmall" />
 
                 </LinearLayout>

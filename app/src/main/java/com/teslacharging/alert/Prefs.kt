@@ -2,6 +2,8 @@ package com.teslacharging.alert
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 
 object Prefs {
     private const val PREF_FILE = "tesla_prefs"
@@ -18,8 +20,18 @@ object Prefs {
     const val DEFAULT_API_BASE_URL = "https://owner-api.teslamotors.com"
     const val DEFAULT_CHECK_INTERVAL = 10
 
-    private fun prefs(context: Context): SharedPreferences =
-        context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+    private fun prefs(context: Context): SharedPreferences {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        return EncryptedSharedPreferences.create(
+            context,
+            PREF_FILE,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
 
     fun getApiToken(context: Context): String =
         prefs(context).getString(KEY_API_TOKEN, "") ?: ""

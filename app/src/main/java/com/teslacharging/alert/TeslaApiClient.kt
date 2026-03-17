@@ -122,7 +122,7 @@ object TeslaApiClient {
             connectTimeout = CONNECT_TIMEOUT
             readTimeout = READ_TIMEOUT
         }
-        return conn.use { it.readResponse() }
+        return conn.readResponse()
     }
 
     private fun post(urlString: String, apiToken: String): String {
@@ -133,9 +133,9 @@ object TeslaApiClient {
             doOutput = true
             connectTimeout = CONNECT_TIMEOUT
             readTimeout = READ_TIMEOUT
-            outputStream.write("{}".toByteArray())
         }
-        return conn.use { it.readResponse() }
+        conn.outputStream.use { it.write("{}".toByteArray()) }
+        return conn.readResponse()
     }
 
     private fun HttpURLConnection.readResponse(): String {
