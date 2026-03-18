@@ -6,9 +6,9 @@ import android.os.Bundle
 import android.view.MenuItem
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.teslacharging.alert.databinding.ActivitySettingsBinding
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -90,7 +90,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnFetchVehicles.isEnabled = false
         binding.btnFetchVehicles.text = "Fetching…"
 
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             val vehicles = TeslaApiClient.getVehicles(baseUrl, token)
             withContext(Dispatchers.Main) {
                 binding.btnFetchVehicles.isEnabled = true

@@ -14,10 +14,10 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
 import com.teslacharging.alert.TeslaApiClient.ApiResult
 import com.teslacharging.alert.databinding.ActivityMainBinding
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -94,7 +94,7 @@ class MainActivity : AppCompatActivity() {
         binding.tvBatteryLevel.text = "Battery: —"
         binding.btnCheckNow.isEnabled = false
 
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             val result = TeslaApiClient.getChargeState(
                 Prefs.getApiBaseUrl(this@MainActivity),
                 Prefs.getApiToken(this@MainActivity),
