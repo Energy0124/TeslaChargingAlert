@@ -134,8 +134,12 @@ object TeslaApiClient {
             connectTimeout = CONNECT_TIMEOUT
             readTimeout = READ_TIMEOUT
         }
-        conn.outputStream.use { it.write("{}".toByteArray()) }
-        return conn.readResponse()
+        return try {
+            conn.outputStream.use { it.write("{}".toByteArray()) }
+            conn.readResponse()
+        } finally {
+            conn.disconnect()
+        }
     }
 
     private fun HttpURLConnection.readResponse(): String {
