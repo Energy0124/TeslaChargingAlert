@@ -50,6 +50,8 @@ object TeslaApiClient {
                     state = v.optString("state", "unknown")
                 )
             }
+        } catch (e: UnauthorizedException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "getVehicles failed", e)
             emptyList()
@@ -75,6 +77,8 @@ object TeslaApiClient {
                 Log.e(TAG, "Still offline after wake", e2)
                 ApiResult.VehicleAsleep("Vehicle did not wake in time")
             }
+        } catch (e: UnauthorizedException) {
+            ApiResult.Error("Unauthorized: token is invalid or expired. Please update your API token.")
         } catch (e: Exception) {
             Log.e(TAG, "getChargeState failed", e)
             ApiResult.Error(e.message ?: "Unknown error")
@@ -146,6 +150,10 @@ object TeslaApiClient {
         return try {
             when (responseCode) {
                 200 -> inputStream.bufferedReader().readText()
+                401 -> {
+                    val error = errorStream?.bufferedReader()?.readText() ?: ""
+                    throw UnauthorizedException("HTTP 401: $error")
+                }
                 408 -> throw VehicleAsleepException("Vehicle is asleep (408)")
                 else -> {
                     val error = errorStream?.bufferedReader()?.readText() ?: ""
@@ -163,4 +171,5 @@ object TeslaApiClient {
     }
 
     class VehicleAsleepException(message: String) : Exception(message)
+    class UnauthorizedException(message: String) : Exception(message)
 }

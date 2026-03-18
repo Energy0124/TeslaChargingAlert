@@ -17,7 +17,7 @@ object Prefs {
     private const val KEY_ALERT_ON_NO_POWER = "alert_on_no_power"
     private const val KEY_WAKE_VEHICLE = "wake_vehicle"
 
-    const val DEFAULT_API_BASE_URL = "https://owner-api.teslamotors.com"
+    const val DEFAULT_API_BASE_URL = "https://fleet-api.prd.na.vn.cloud.tesla.com"
     const val DEFAULT_CHECK_INTERVAL = 10
 
     private fun prefs(context: Context): SharedPreferences {

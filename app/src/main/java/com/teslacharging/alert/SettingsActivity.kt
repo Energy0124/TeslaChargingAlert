@@ -91,15 +91,23 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnFetchVehicles.text = "Fetching…"
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val vehicles = TeslaApiClient.getVehicles(baseUrl, token)
+            val result = runCatching { TeslaApiClient.getVehicles(baseUrl, token) }
             withContext(Dispatchers.Main) {
                 binding.btnFetchVehicles.isEnabled = true
                 binding.btnFetchVehicles.text = "Fetch My Vehicles"
 
+                if (result.exceptionOrNull() is TeslaApiClient.UnauthorizedException) {
+                    Toast.makeText(this@SettingsActivity,
+                        "Invalid or expired token (401). Generate a new Fleet API token and try again.",
+                        Toast.LENGTH_LONG).show()
+                    return@withContext
+                }
+
+                val vehicles = result.getOrElse { emptyList() }
                 when {
                     vehicles.isEmpty() ->
                         Toast.makeText(this@SettingsActivity,
-                            "No vehicles found. Check your token.", Toast.LENGTH_LONG).show()
+                            "No vehicles found. Check your token and base URL.", Toast.LENGTH_LONG).show()
 
                     vehicles.size == 1 -> {
                         binding.etVehicleId.setText(vehicles[0].id.toString())
@@ -143,9 +151,10 @@ class SettingsActivity : AppCompatActivity() {
                 "on the App Store / Play Store.\n\n" +
                 "Paste the resulting Bearer token into the API Token field.\n\n" +
                 "Base URL:\n" +
-                "• Owner API (personal use): https://owner-api.teslamotors.com\n" +
                 "• Fleet API (NA): https://fleet-api.prd.na.vn.cloud.tesla.com\n" +
-                "• Fleet API (EU): https://fleet-api.prd.eu.vn.cloud.tesla.com"
+                "• Fleet API (EU): https://fleet-api.prd.eu.vn.cloud.tesla.com\n" +
+                "• Fleet API (Asia/Pacific): https://fleet-api.prd.cn.vn.cloud.tesla.cn\n\n" +
+                "Note: owner-api.teslamotors.com is no longer supported."
             )
             .setPositiveButton("OK", null)
             .show()
