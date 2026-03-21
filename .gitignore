@@ -1,10 +1,40 @@
-*.iml
-.gradle
-/local.properties
-/.idea
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# Android / Gradle
+.gradle/
+build/
+*/build/
+.kotlin/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Local machine configuration
 local.properties
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Android signing / packaged artifacts
+*.jks
+*.keystore
+*.apk
+*.aab
+*.ap_
+
+# Native / profiling outputs
+*.hprof
+
+# Google services or env-style local secrets
+google-services.json
+.env
+.env.*
