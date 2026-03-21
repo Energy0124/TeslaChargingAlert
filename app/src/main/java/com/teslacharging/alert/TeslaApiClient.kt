@@ -1,5 +1,6 @@
 package com.teslacharging.alert
 
+import android.content.Context
 import android.util.Log
 import org.json.JSONObject
 import java.io.IOException
@@ -37,18 +38,20 @@ object TeslaApiClient {
     // Public API
     // -------------------------------------------------------------------------
 
-    fun getVehicles(baseUrl: String, apiToken: String): List<Vehicle> {
+    fun getVehicles(context: Context, baseUrl: String): List<Vehicle> {
         return try {
-            val body = get("$baseUrl/api/1/vehicles", apiToken)
-            val array = JSONObject(body).getJSONArray("response")
-            (0 until array.length()).map { i ->
-                val v = array.getJSONObject(i)
-                Vehicle(
-                    id = v.getLong("id"),
-                    vin = v.optString("vin", ""),
-                    displayName = v.optString("display_name", "Tesla"),
-                    state = v.optString("state", "unknown")
-                )
+            withManagedToken(context) { apiToken ->
+                val body = get("$baseUrl/api/1/vehicles", apiToken)
+                val array = JSONObject(body).getJSONArray("response")
+                (0 until array.length()).map { i ->
+                    val v = array.getJSONObject(i)
+                    Vehicle(
+                        id = v.getLong("id"),
+                        vin = v.optString("vin", ""),
+                        displayName = v.optString("display_name", "Tesla"),
+                        state = v.optString("state", "unknown")
+                    )
+                }
             }
         } catch (e: UnauthorizedException) {
             throw e
@@ -59,26 +62,36 @@ object TeslaApiClient {
     }
 
     fun getChargeState(
+        context: Context,
         baseUrl: String,
-        apiToken: String,
         vehicleId: String,
         wakeIfNeeded: Boolean
     ): ApiResult {
         return try {
-            fetchChargeState(baseUrl, apiToken, vehicleId)
+            withManagedToken(context) { apiToken ->
+                fetchChargeState(baseUrl, apiToken, vehicleId)
+            }
         } catch (e: VehicleAsleepException) {
             if (!wakeIfNeeded) return ApiResult.VehicleAsleep(e.message ?: "Vehicle is asleep")
             Log.d(TAG, "Vehicle asleep — sending wake_up")
-            wakeVehicle(baseUrl, apiToken, vehicleId)
+            try {
+                withManagedToken(context) { apiToken ->
+                    wakeVehicle(baseUrl, apiToken, vehicleId)
+                }
+            } catch (e2: UnauthorizedException) {
+                return ApiResult.Error(e2.message ?: "Tesla login expired. Please sign in again.")
+            }
             Thread.sleep(15_000)
             try {
-                fetchChargeState(baseUrl, apiToken, vehicleId)
+                withManagedToken(context) { apiToken ->
+                    fetchChargeState(baseUrl, apiToken, vehicleId)
+                }
             } catch (e2: Exception) {
                 Log.e(TAG, "Still offline after wake", e2)
                 ApiResult.VehicleAsleep("Vehicle did not wake in time")
             }
         } catch (e: UnauthorizedException) {
-            ApiResult.Error("Unauthorized: token is invalid or expired. Please update your API token.")
+            ApiResult.Error(e.message ?: "Tesla login expired. Please sign in again.")
         } catch (e: Exception) {
             Log.e(TAG, "getChargeState failed", e)
             ApiResult.Error(e.message ?: "Unknown error")
@@ -115,6 +128,27 @@ object TeslaApiClient {
             post("$baseUrl/api/1/vehicles/$vehicleId/wake_up", apiToken)
         } catch (e: Exception) {
             Log.w(TAG, "wake_up request failed (may still wake)", e)
+        }
+    }
+
+    private inline fun <T> withManagedToken(context: Context, block: (String) -> T): T {
+        val initialToken = try {
+            TeslaAuthManager.getValidAccessToken(context)
+        } catch (e: TeslaAuthManager.AuthException) {
+            throw UnauthorizedException(e.message ?: "Tesla login expired. Please sign in again.")
+        }
+
+        return try {
+            block(initialToken)
+        } catch (e: UnauthorizedException) {
+            val refreshedToken = try {
+                TeslaAuthManager.getValidAccessToken(context, forceRefresh = true)
+            } catch (refreshError: TeslaAuthManager.AuthException) {
+                throw UnauthorizedException(
+                    refreshError.message ?: "Tesla login expired. Please sign in again."
+                )
+            }
+            block(refreshedToken)
         }
     }
 

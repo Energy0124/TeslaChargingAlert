@@ -64,10 +64,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun toggleMonitoring() {
         if (!Prefs.isMonitoringEnabled(this)) {
-            if (Prefs.getApiToken(this).isBlank() || Prefs.getVehicleId(this).isBlank()) {
+            if (!Prefs.hasOAuthSession(this) || Prefs.getVehicleId(this).isBlank()) {
                 Snackbar.make(
                     binding.root,
-                    "Configure your API token and Vehicle ID in Settings first.",
+                    "Connect your Tesla account and choose a Vehicle ID in Settings first.",
                     Snackbar.LENGTH_LONG
                 ).setAction("Settings") {
                     startActivity(Intent(this, SettingsActivity::class.java))
@@ -84,8 +84,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkNow() {
-        if (Prefs.getApiToken(this).isBlank() || Prefs.getVehicleId(this).isBlank()) {
-            Snackbar.make(binding.root, "Configure API token and Vehicle ID in Settings.", Snackbar.LENGTH_LONG).show()
+        if (!Prefs.hasOAuthSession(this) || Prefs.getVehicleId(this).isBlank()) {
+            Snackbar.make(
+                binding.root,
+                "Connect your Tesla account and Vehicle ID in Settings.",
+                Snackbar.LENGTH_LONG
+            ).show()
             return
         }
 
@@ -96,8 +100,8 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch(Dispatchers.IO) {
             val result = TeslaApiClient.getChargeState(
+                this@MainActivity,
                 Prefs.getApiBaseUrl(this@MainActivity),
-                Prefs.getApiToken(this@MainActivity),
                 Prefs.getVehicleId(this@MainActivity),
                 Prefs.isWakeVehicle(this@MainActivity)
             )
