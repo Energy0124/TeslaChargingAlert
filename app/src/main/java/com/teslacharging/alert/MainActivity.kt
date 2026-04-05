@@ -1,6 +1,7 @@
 package com.teslacharging.alert
 
 import android.Manifest
+import android.app.AlarmManager
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
@@ -40,6 +41,11 @@ class MainActivity : AppCompatActivity() {
         binding.btnDndPermission.setOnClickListener {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
         }
+        binding.btnAlarmPermission.setOnClickListener {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
+            }
+        }
     }
 
     override fun onResume() {
@@ -64,16 +70,31 @@ class MainActivity : AppCompatActivity() {
 
     private fun toggleMonitoring() {
         if (!Prefs.isMonitoringEnabled(this)) {
-            if (Prefs.getApiToken(this).isBlank() || Prefs.getVehicleId(this).isBlank()) {
+            if (!Prefs.hasOAuthSession(this) || Prefs.getVehicleId(this).isBlank()) {
                 Snackbar.make(
                     binding.root,
-                    "Configure your API token and Vehicle ID in Settings first.",
+                    "Connect your Tesla account and choose a Vehicle ID in Settings first.",
                     Snackbar.LENGTH_LONG
                 ).setAction("Settings") {
                     startActivity(Intent(this, SettingsActivity::class.java))
                 }.show()
                 return
             }
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                if (!alarmManager.canScheduleExactAlarms()) {
+                    Snackbar.make(
+                        binding.root,
+                        "Exact Alarm permission is required for monitoring.",
+                        Snackbar.LENGTH_LONG
+                    ).setAction("Grant") {
+                        startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
+                    }.show()
+                    return
+                }
+            }
+
             Prefs.setMonitoringEnabled(this, true)
             AlarmScheduler.scheduleNextCheck(this)
         } else {
@@ -84,8 +105,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkNow() {
-        if (Prefs.getApiToken(this).isBlank() || Prefs.getVehicleId(this).isBlank()) {
-            Snackbar.make(binding.root, "Configure API token and Vehicle ID in Settings.", Snackbar.LENGTH_LONG).show()
+        if (!Prefs.hasOAuthSession(this) || Prefs.getVehicleId(this).isBlank()) {
+            Snackbar.make(
+                binding.root,
+                "Connect your Tesla account and Vehicle ID in Settings.",
+                Snackbar.LENGTH_LONG
+            ).show()
             return
         }
 
@@ -96,8 +121,8 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch(Dispatchers.IO) {
             val result = TeslaApiClient.getChargeState(
+                this@MainActivity,
                 Prefs.getApiBaseUrl(this@MainActivity),
-                Prefs.getApiToken(this@MainActivity),
                 Prefs.getVehicleId(this@MainActivity),
                 Prefs.isWakeVehicle(this@MainActivity)
             )
@@ -148,6 +173,7 @@ class MainActivity : AppCompatActivity() {
         binding.tvMonitoringStatus.text =
             if (enabled) "Active – checks every $interval min" else "Inactive"
 
+        // DND Permission
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val hasDnd = nm.isNotificationPolicyAccessGranted
         binding.btnDndPermission.visibility = if (hasDnd) View.GONE else View.VISIBLE
@@ -156,6 +182,19 @@ class MainActivity : AppCompatActivity() {
         binding.tvDndStatus.setTextColor(
             if (hasDnd) getColor(R.color.status_ok) else getColor(R.color.status_warn)
         )
+
+        // Exact Alarm Permission
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            val hasAlarmPerm = alarmManager.canScheduleExactAlarms()
+            binding.cardAlarmPermission.visibility = if (hasAlarmPerm) View.GONE else View.VISIBLE
+            binding.tvAlarmStatus.text = if (hasAlarmPerm) "Exact alarms: Granted" else "Exact alarms: Not granted (required for Android 12+)"
+            binding.tvAlarmStatus.setTextColor(
+                if (hasAlarmPerm) getColor(R.color.status_ok) else getColor(R.color.status_warn)
+            )
+        } else {
+            binding.cardAlarmPermission.visibility = View.GONE
+        }
     }
 
     private fun requestNotificationPermission() {

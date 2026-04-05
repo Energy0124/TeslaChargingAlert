@@ -2,4 +2,9 @@
 <resources>
     <string name="app_name">Tesla Charging Alert</string>
     <string name="check_now_hint">Tap \u201cCheck Now\u201d to see current status</string>
+    <string name="exact_alarm_permission_title">Exact Alarm Permission</string>
+    <string name="exact_alarm_permission_subtitle">Required for timely alerts</string>
+    <string name="grant_exact_alarm_permission">Grant Exact Alarm Permission</string>
+    <string name="exact_alarms_granted">Exact alarms: Granted</string>
+    <string name="exact_alarms_not_granted">Exact alarms: Not granted (required for Android 12+)</string>
 </resources>

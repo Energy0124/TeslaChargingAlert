@@ -4,23 +4,30 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.util.Log
 
 object AlarmScheduler {
     const val ACTION_CHECK_CHARGING = "com.teslacharging.alert.CHECK_CHARGING"
     private const val REQUEST_CODE = 42
 
     /**
-     * Schedule the next charging check using setAlarmClock(), which:
-     *  - Fires even during Doze mode
-     *  - Bypasses battery optimizations
-     *  - Shows the alarm clock icon in the status bar
-     *  - Does NOT require SCHEDULE_EXACT_ALARM permission (it IS an alarm clock)
+     * Schedule the next charging check using setAlarmClock().
+     * Note: On Android 14+ (API 34), this requires SCHEDULE_EXACT_ALARM permission.
      */
     fun scheduleNextCheck(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        
+        // Safety check for Android 12+ to avoid SecurityException
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (!alarmManager.canScheduleExactAlarms()) {
+                Log.e("AlarmScheduler", "Cannot schedule exact alarm: permission missing")
+                return
+            }
+        }
+
         val intervalMs = Prefs.getCheckInterval(context) * 60_000L
         val triggerAt = System.currentTimeMillis() + intervalMs
-
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
         // When user taps the clock icon in status bar, open the app
         val showIntent = PendingIntent.getActivity(

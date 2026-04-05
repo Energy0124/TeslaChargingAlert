@@ -55,19 +55,18 @@ class ChargingCheckService : Service() {
     // -------------------------------------------------------------------------
 
     private fun runCheck() {
-        val token = Prefs.getApiToken(this)
         val vehicleId = Prefs.getVehicleId(this)
         val baseUrl = Prefs.getApiBaseUrl(this)
         val wakeVehicle = Prefs.isWakeVehicle(this)
 
-        if (token.isBlank() || vehicleId.isBlank()) {
-            Log.w(TAG, "API token or vehicle ID not configured – skipping check")
+        if (!Prefs.hasOAuthSession(this) || vehicleId.isBlank()) {
+            Log.w(TAG, "Tesla login or vehicle ID not configured – skipping check")
             return
         }
 
         Log.d(TAG, "Checking charge state for vehicle $vehicleId")
 
-        when (val result = TeslaApiClient.getChargeState(baseUrl, token, vehicleId, wakeVehicle)) {
+        when (val result = TeslaApiClient.getChargeState(this, baseUrl, vehicleId, wakeVehicle)) {
             is TeslaApiClient.ApiResult.VehicleAsleep -> {
                 Log.d(TAG, "Vehicle is asleep – no idle fee risk, skipping alert")
             }
